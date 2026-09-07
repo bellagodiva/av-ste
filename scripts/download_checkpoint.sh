@@ -16,7 +16,7 @@
 #   pip install huggingface_hub
 #   python -c "
 #     from huggingface_hub import hf_hub_download
-#     path = hf_hub_download(repo_id='YOUR_ORG/av-ste', filename='avste.pt')
+#     path = hf_hub_download(repo_id='bgdv99/av-ste', filename='avste.pt')
 #     print(path)
 #   "
 #   cp <path> checkpoints/avste.pt
@@ -46,7 +46,7 @@ import os, shutil
 from huggingface_hub import hf_hub_download
 
 path = hf_hub_download(
-    repo_id="YOUR_ORG/av-ste",   # TODO: update after HF upload
+    repo_id="bgdv99/av-ste",
     filename=os.environ["FILENAME"],
     repo_type="model",
 )

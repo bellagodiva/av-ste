@@ -14,7 +14,7 @@ Or download manually:
 
 ```python
 from huggingface_hub import hf_hub_download
-path = hf_hub_download(repo_id="YOUR_ORG/av-ste", filename="avste.pt")
+path = hf_hub_download(repo_id="bgdv99/av-ste", filename="avste.pt")
 # same for filename="avste_lrs3_interference.pt"
 ```
 
