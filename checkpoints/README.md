@@ -27,17 +27,6 @@ LRS3 + VoxCeleb2 -- download it from the
 [official AV-HuBERT model zoo](https://github.com/facebookresearch/av_hubert)
 and place it at `checkpoints/large_vox_iter5.pt`.
 
-## Which checkpoint should I use?
-
-| Your noise scenario | Checkpoint |
-|---|---|
-| Background/ambient noise, or a competing speaker from a **different** recording/dataset than your target speaker | `avste.pt` |
-| A competing speaker who sounds like they could be **the same kind of recording** as your target (e.g. two people from the same corpus, overlapping conversational speech) | `avste_lrs3_interference.pt` |
-| Out-of-domain video (not LRS3-like studio recordings, e.g. casual dyadic interaction footage) | `avste_lrs3_interference.pt` (this is also the checkpoint we evaluated on Seamless Interaction) |
-
-If you're not sure, start with `avste.pt` -- it's the more general-purpose
-checkpoint and what the bundled demo (`examples/run_demo.sh`) uses.
-
 ## Checkpoint details
 
 | Checkpoint | Training data | Description |
