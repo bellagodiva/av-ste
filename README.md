@@ -33,7 +33,7 @@ Together they reproduce every semantic-token-accuracy row in the paper's main ta
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_ORG/av-ste.git
+git clone https://github.com/bellagodiva/av-ste.git
 cd av-ste
 
 conda create -n avste python=3.10 -y
@@ -108,7 +108,7 @@ python scripts/infer_avste.py \
     --checkpoint checkpoints/avste.pt \
     --output outputs/enhanced_tokens.pt --fp16
 
-# Reconstructed speech (enhanced tokens + noisy audio's own acoustic codebooks,
+# (Optional) Reconstructed speech (enhanced tokens + noisy audio's own acoustic codebooks,
 # decoded through Mimi) -- convenient for listening, but a diagnostic view;
 # token accuracy is the metric that matters for downstream use
 python scripts/infer_avste.py \
@@ -117,7 +117,7 @@ python scripts/infer_avste.py \
     --output outputs/enhanced_speech.wav --fp16
 ```
 
-**3. (Optional) Stream through Moshi** for a spoken dialogue response:
+**3. Stream through Moshi** for a spoken dialogue response:
 
 ```bash
 python scripts/infer_avste.py \
