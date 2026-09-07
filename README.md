@@ -4,16 +4,10 @@
 
 AV-STE recovers clean Mimi semantic tokens from noisy speech by fusing audio features with lip-ROI video through an entropy-gated cross-attention module built on top of AV-HuBERT. Enhanced tokens can be fed directly into any Mimi-based TTS or codec LM (e.g. Moshi) in place of the noisy ones.
 
-```
-Noisy audio (16 kHz) ──► AV-HuBERT encoder ──┐
-                                               ├──► Entropy-gated cross-attention ──► Enhanced Mimi tokens
-Lip video  (25 fps)  ──► AV-HuBERT encoder ──┘          ▲
-                                                          │
-Noisy audio          ──► Mimi encoder ──► soft logits ───┘
-```
+![AV-STE method overview](avste_method.png)
 
 - **Input**: noisy 16 kHz WAV + 96×96 grayscale mouth-ROI MP4 at 25 fps
-- **Output**: enhanced Mimi cb0 token sequence at 12.5 Hz, from the 2048-entry semantic codebook
+- **Output**: enhanced Mimi semantic(cb0) token sequence at 12.5 Hz
 
 ---
 
