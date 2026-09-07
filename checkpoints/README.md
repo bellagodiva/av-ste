@@ -32,7 +32,7 @@ and place it at `checkpoints/large_vox_iter5.pt`.
 | Checkpoint | Training data | Description |
 |------------|--------------|-------------|
 | `avste.pt` | LRS3 433 h, with 20/40/40 clean/non-speech/speech-interference augmentation (AudioSet noise) | AV-STE (Soft-CA+NAM), 4-frame lookahead, entropy-gated cross-attention. Reproduces the paper's Clean / Non-speech (AudioSet) / Speaker (AudioSet) results (Table 1). |
-| `avste_lrs3_interference.pt` | `avste.pt`, further trained with the target utterance mixed against 1-4 LRS3 interfering speakers (same augmentation ratio, AudioSet interference swapped for same-dataset speakers) | Reproduces the paper's same-dataset LRS3 speaker-interference row and the Seamless Interaction (out-of-domain) rows. |
+| `avste_lrs3_interference.pt` | `avste.pt`, further trained with the target utterance mixed against 1-4 LRS3 interfering speakers with ratio 20/40/40 clean/non-speech/speech-interference | Reproduces the paper's same-dataset LRS3 speaker-interference row and the Seamless Interaction (out-of-domain) rows. |
 | `large_vox_iter5.pt` | LRS3 + VoxCeleb2 | Public AV-HuBERT-Large backbone. **Only its architecture config is used** -- `infer_avste.py` builds the model skeleton from it, then immediately overwrites every weight with the AV-STE checkpoint's fine-tuned state dict. You do not need this file to be the "right" checkpoint in any deeper sense, just a valid AV-HuBERT-Large checkpoint file so the loader can read its config. |
 
 All are fairseq model ensemble files, loaded via:
