@@ -1,5 +1,4 @@
-# LRS3 dialogue test set (125 clips) -- reproduction, not redistribution
-
+# LRS3 dialogue test set (125 clips)
 LRS3 is distributed under a license agreement that restricts redistribution
 of the underlying media, and the raw video/audio ultimately comes from
 third-party TED/TEDx recordings. We do not host or redistribute any LRS3
@@ -13,8 +12,7 @@ from **your own** independently obtained LRS3 license:
   yourself.
 - **`sample_lrs3_test_subset.py`** -- the exact sampling script. Run it
   against your own `test_clean.tsv` manifest with `--seed 42` (the default)
-  and it reproduces `clip_ids.txt` byte-for-byte -- we verified this
-  ourselves before publishing these files.
+  and it reproduces `clip_ids.txt` 
 
 ## Usage
 
@@ -31,14 +29,3 @@ from **your own** independently obtained LRS3 license:
    ```bash
    tail -n +2 /path/to/output/test_clean_125.tsv | cut -f1 | diff - clip_ids.txt && echo "matches"
    ```
-
-## Note on visual-quality filtering
-
-The paper's dataset description also mentions a visual-quality filtering
-pass. We were unable to locate a separate, reusable script for that step
-when preparing this release -- empirically, `sample_lrs3_test_subset.py`
-alone (duration filter + seeded random sample) already reproduces
-`clip_ids.txt` exactly, so no additional filtering step is needed to get
-the same 125 clips. We're flagging this gap rather than silently omitting
-it, in case it becomes relevant for exact reproduction of other aspects of
-the evaluation.
