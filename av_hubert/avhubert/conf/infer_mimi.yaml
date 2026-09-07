@@ -1,0 +1,33 @@
+common:
+  user_dir: ???
+  fp16: false
+  log_format: simple
+  log_interval: 10
+  no_progress_bar: false
+  seed: 1337
+
+common_eval:
+  results_path: ???
+  path: ???
+
+dataset:
+  max_tokens: 1000
+  batch_size: null
+  gen_subset: test
+  num_workers: 0
+  skip_invalid_size_inputs_valid_test: false
+  required_batch_size_multiple: 1
+  data_buffer_size: 10
+
+distributed_training:
+  distributed_world_size: 1
+  distributed_rank: 0
+  pipeline_model_parallel: false
+
+override:
+  noise_wav: null
+  noise_prob: 0.0
+  noise_snr: 0
+  modalities: ["video"]
+  data: null
+  label_dir: null

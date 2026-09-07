@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+
+# Checkpoints (downloaded via scripts/download_checkpoint.sh, not committed)
+checkpoints/*.pt
+
+# Demo-generated outputs
+outputs/
+!outputs/.gitkeep
+
+# Stray fairseq/hydra run directories, in case any script here is ever
+# invoked via hydra directly instead of through scripts/infer_avste.py
+/av_hubert/avhubert/outputs/
+
+# Downloaded dlib face-landmark model (see README "Enhance your own audio")
+# -- fetched by the user, not shipped in the repo
+*.dat
+*shape_predictor*
+
+# docs/audio/ is populated locally by copying outputs/compare_audio/*.wav
+# after running the demo yourself (see examples/run_demo.sh) -- not shipped,
+# since those files are derived from LRS3 audio we don't redistribute.
+docs/audio/*.wav
+!docs/audio/.gitkeep

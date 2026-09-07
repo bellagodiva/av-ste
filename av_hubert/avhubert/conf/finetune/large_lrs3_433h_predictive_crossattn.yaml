@@ -1,0 +1,153 @@
+# @package _group_
+#
+# Predictive Cross-Attention AV-HuBERT (causal=0, streaming-safe)
+#
+# Causal backbone + Future Feature Predictor (FFP) + Soft Cross-Attention.
+# FFP predicts the next L=4 AV-HuBERT frames from past context,
+# then uses those predicted frames as emulated lookahead for cross-attention.
+#
+# Requires NOISY_LOGITS_ROOT env var pointing to {utt_id}.npy logit files.
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 100
+  tensorboard_logdir: tblog
+  seed: 1337
+  user_dir: ???
+
+checkpoint:
+  save_interval: 1
+  save_interval_updates: 5000
+  keep_interval_updates: 3
+  no_epoch_checkpoints: false
+  best_checkpoint_metric: loss
+  maximize_best_checkpoint_metric: false
+
+distributed_training:
+  ddp_backend: c10d
+  find_unused_parameters: true
+  distributed_world_size: 1
+  distributed_port: 29678
+  nprocs_per_node: 1
+
+task:
+  _name: av_hubert_pretraining
+  data: ???
+  label_dir: ???
+  labels: ["mimi"]
+
+  label_rate: 25
+  fine_tuning: true
+  single_target: false
+  is_s2s: false
+
+  normalize: true
+  stack_order_audio: 4
+  max_sample_size: 500
+
+  modalities: ["audio", "video"]
+
+  image_aug: true
+  pad_audio: true
+  random_crop: false
+
+dataset:
+  num_workers: 6
+  max_tokens: 2000
+  validate_after_updates: 0
+  validate_interval: 1
+  validate_interval_updates: 5000
+  train_subset: train
+  valid_subset: valid
+
+criterion:
+  _name: mimi_mix_loss
+  d_model: 1024
+  lambda_pred_coding: 0.1   # weight on FFP MSE loss (echoes model.lambda_pred)
+  lambda_kd: 0.5            # KL-div KD from lookahead=4 teacher; set 0.0 to disable
+  kd_temperature: 2.0       # softening temperature for KD
+
+optimization:
+  max_epoch: 6
+  max_update: 1000000
+  lr: [0.0001]
+  sentence_avg: false
+  update_freq: [1]
+  clip_norm: 5.0
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+  weight_decay: 0.0
+
+lr_scheduler:
+  _name: tri_stage
+  warmup_steps: 4000
+  hold_steps: 0
+  decay_steps: 35000
+  final_lr_scale: 0.05
+
+model:
+  _name: av_hubert_predictive_crossattn
+  w2v_path: ???
+  mimi_vocab_size: 2048
+  head_hidden_dim: 0
+
+  lookahead_frames: 0       # strictly causal backbone
+
+  token_embed_dim: 256
+  cross_attn_heads: 4
+  cross_attn_dropout: 0.1
+  logit_temperature: 1.0
+
+  # Future Feature Predictor
+  ffp_lookahead: 4          # predict & use 4 future frames
+  ffp_n_heads: 4
+  ffp_n_layers: 2
+  ffp_dropout: 0.1
+  lambda_pred: 1.0          # MSE loss weight
+
+  use_predicted_future: true  # set false for ablation (pred loss only, no query augment)
+
+  prefix_length: 0
+  speaker_cond: none
+
+  normalize: true
+
+  apply_mask: false
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+
+  layerdrop: 0.1
+  dropout: 0.1
+  activation_dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 1.0
+  freeze_finetune_updates: 0
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+          - model.w2v_path
+          - dataset.train_subset
+          - dataset.valid_subset
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

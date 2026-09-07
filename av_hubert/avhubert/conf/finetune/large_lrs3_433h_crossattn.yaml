@@ -1,0 +1,140 @@
+# @package _group_
+#
+# Cross-attention AV-HuBERT (LOOKAHEAD-4, ~240ms latency):
+#   noisy audio + clean video → clean Mimi semantic tokens
+#
+# Identical to large_lrs3_433h_crossattn_causal.yaml except both the backbone
+# transformer and the cross-attention fuser can see 4 future frames (+160ms).
+# Expected to recover most of the quality gap vs. bidirectional, at 240ms total
+# latency (4 frames × 40ms/frame + 80ms backbone base).
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 100
+  tensorboard_logdir: tblog
+  seed: 1337
+  user_dir: ???
+
+checkpoint:
+  save_interval: 1
+  save_interval_updates: 5000
+  keep_interval_updates: 3
+  no_epoch_checkpoints: false
+  best_checkpoint_metric: loss
+  maximize_best_checkpoint_metric: false
+
+distributed_training:
+  ddp_backend: c10d
+  find_unused_parameters: true
+  distributed_world_size: 1
+  distributed_port: 29675
+  nprocs_per_node: 1
+
+task:
+  _name: av_hubert_pretraining
+  data: ???
+  label_dir: ???
+  labels: ["mimi"]
+
+  label_rate: 25
+  fine_tuning: true
+  single_target: false
+  is_s2s: false
+
+  normalize: true
+  stack_order_audio: 4
+  max_sample_size: 500
+
+  modalities: ["audio", "video"]
+
+  image_aug: true
+  pad_audio: true
+  random_crop: false
+
+dataset:
+  num_workers: 6
+  max_tokens: 1000
+  validate_after_updates: 0
+  validate_interval: 1
+  validate_interval_updates: 5000
+  train_subset: train
+  valid_subset: valid
+
+criterion:
+  _name: mimi_mix_loss
+  d_model: 1024
+
+optimization:
+  max_epoch: 6
+  max_update: 1000000
+  lr: [0.0001]
+  sentence_avg: false
+  update_freq: [1]
+  clip_norm: 5.0
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+  weight_decay: 0.0
+
+lr_scheduler:
+  _name: tri_stage
+  warmup_steps: 4000
+  hold_steps: 0
+  decay_steps: 35000
+  final_lr_scale: 0.05
+
+model:
+  _name: av_hubert_crossattn_noisy
+  w2v_path: /mnt/hard1/bella/EMNLP26/model_weight/large_vox_iter5.pt
+  mimi_vocab_size: 2048
+  head_hidden_dim: 0
+
+  # ── backbone causal settings ──────────────────────────────────────────────
+  lookahead_frames: 4         # backbone sees 4 future frames (+160ms)
+
+  # ── cross-attention fuser ─────────────────────────────────────────────────
+  token_embed_dim: 256
+  cross_attn_heads: 4
+  cross_attn_dropout: 0.1
+  cross_attn_lookahead: 4     # cross-attention matches backbone lookahead
+
+  # ── regularisation ────────────────────────────────────────────────────────
+  apply_mask: false
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+
+  layerdrop: 0.1
+  dropout: 0.1
+  activation_dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 1.0
+  freeze_finetune_updates: 0
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+          - task.noise_wav
+          - model.w2v_path
+          - dataset.train_subset
+          - dataset.valid_subset
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

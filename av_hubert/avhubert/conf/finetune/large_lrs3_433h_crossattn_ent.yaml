@@ -1,0 +1,167 @@
+# @package _group_
+#
+# Entropy-gated soft cross-attention AV-HuBERT (LOOKAHEAD-4, ~240ms latency):
+#   noisy audio + clean video → clean Mimi semantic tokens
+#
+# Difference from crossattn_soft: the noisy context fed into cross-attention is
+# scaled by a per-frame confidence gate derived from normalized entropy:
+#
+#   p          = softmax(noisy_logits / T)
+#   H_norm     = -∑ p·log(p) / log(V)      ∈ [0, 1]
+#   confidence = 1 − H_norm
+#   noisy_ctx  = noisy_proj(p @ embed.weight) * confidence
+#
+# Advantage over max-probability gating: entropy captures the full shape of
+# the distribution, not just the single peak, giving a more nuanced signal for
+# frames where the top-2 candidates are nearly tied.
+#
+# Requires NOISY_LOGITS_ROOT env var pointing to pre-extracted .npy logits.
+# Optional KD: set TEACHER_LOGITS_ROOT to dir of {utt_id}.npy teacher logits
+#   (from a lookahead>0 teacher) and set criterion.lambda_kd > 0.
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 100
+  tensorboard_logdir: tblog
+  seed: 1337
+  user_dir: ???
+
+checkpoint:
+  save_interval: 1
+  save_interval_updates: 5000
+  keep_interval_updates: 1
+  no_epoch_checkpoints: false
+  best_checkpoint_metric: loss
+  maximize_best_checkpoint_metric: false
+
+distributed_training:
+  ddp_backend: c10d
+  find_unused_parameters: true
+  distributed_world_size: 1
+  distributed_port: 29676
+  nprocs_per_node: 1
+
+task:
+  _name: av_hubert_pretraining
+  data: ???
+  label_dir: ???
+  labels: ["mimi"]
+
+  label_rate: 25
+  fine_tuning: true
+  single_target: false
+  is_s2s: false
+
+  normalize: true
+  stack_order_audio: 4
+  max_sample_size: 500
+
+  modalities: ["audio","video"]
+
+  image_aug: true
+  pad_audio: true
+  random_crop: false
+
+dataset:
+  num_workers: 6
+  max_tokens: 500
+  validate_after_updates: 0
+  validate_interval: 1
+  validate_interval_updates: 5000
+  train_subset: train_noisy_avsr_25hz
+  valid_subset: valid_noisy_avsr_25hz
+
+criterion:
+  _name: mimi_mix_loss
+  d_model: 1024
+  lambda_pred_coding: 0.0   # 0.0 = disabled; set to e.g. 0.1 to enable
+  lambda_kd: 0.0            # KL-div KD from lookahead>0 teacher; 0.0 = disabled
+  kd_temperature: 2.0       # softening temperature for KD
+
+optimization:
+  max_epoch: 6
+  max_update: 1000000
+  lr: [0.0001]
+  sentence_avg: false
+  update_freq: [1]
+  clip_norm: 5.0
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+  weight_decay: 0.0
+
+lr_scheduler:
+  _name: tri_stage
+  warmup_steps: 4000
+  hold_steps: 0
+  decay_steps: 35000
+  final_lr_scale: 0.05
+
+model:
+  _name: av_hubert_crossattn_ent
+  w2v_path: /mnt/hard1/bella/EMNLP26/model_weight/large_vox_iter5.pt
+  mimi_vocab_size: 2048
+  head_hidden_dim: 0
+
+  # ── backbone causal settings ──────────────────────────────────────────────
+  lookahead_frames: 0
+
+  # ── entropy-gated soft cross-attention fuser ─────────────────────────────
+  token_embed_dim: 256
+  cross_attn_heads: 4
+  cross_attn_dropout: 0.1
+  cross_attn_lookahead: 0
+  logit_temperature: 1.0      # temperature for the softmax used to compute entropy
+
+  # ── prefix tuning ─────────────────────────────────────────────────────────
+  prefix_length: 0  # 0 = disabled; try 4, 8, 16
+
+  # ── speaker conditioning ───────────────────────────────────────────────────
+  # Options: none | pretrained_spk
+  speaker_cond: None
+  speaker_embed_dim: 256
+  pretrained_spk_dim: 512
+
+  pred_coding_k: 0      # 0 = disabled; >0 = predict next k frames at 12.5 Hz
+
+  normalize: true
+
+  # ── regularisation ────────────────────────────────────────────────────────
+  apply_mask: false
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+
+  layerdrop: 0.1
+  dropout: 0.1
+  activation_dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 1.0
+  freeze_finetune_updates: 0
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+          - model.w2v_path
+          - dataset.train_subset
+          - dataset.valid_subset
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

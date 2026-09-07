@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AV-STE: Noise Adaptive Streaming Audio-Visual Speech Token Enhancement for Robust Full-Duplex Spoken Dialogue Models</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      td {
+        vertical-align: middle;
+        text-align: center;
+      }
+      audio {
+        width: 15vw;
+        min-width: 90px;
+        max-width: 160px;
+      }
+      .transcription {
+        font-size: 0.75rem;
+        font-style: italic;
+        text-align: left;
+      }
+      table {
+        table-layout: fixed;
+        width: 100%;
+      }
+      th, td {
+        text-align: center;
+        white-space: normal;
+      }
+      .gt-cell {
+        background-color: #f8f9fa;
+        font-size: 0.82rem;
+        text-align: left !important;
+      }
+      .ours-cell {
+        background-color: #eff6ff !important;
+      }
+      .ours-label {
+        font-weight: bold;
+        font-size: 0.85em;
+        padding: 2px 6px;
+        border: 2px solid #2563eb;
+        border-radius: 4px;
+        display: inline-block;
+        color: #1d4ed8;
+      }
+      .baseline-label {
+        font-weight: bold;
+        font-size: 0.85em;
+      }
+      .metric-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin-top: 3px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      .metric-high { background: #d1fae5; color: #065f46; }
+      .metric-mid  { background: #fef3c7; color: #92400e; }
+      .metric-low  { background: #fee2e2; color: #991b1b; }
+      .section-rule { border-bottom: 2px solid #dee2e6; margin: 2.5rem 0 1.5rem; }
+      .noise-tag {
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.2rem 0.7rem;
+        border-radius: 20px;
+        margin-bottom: 0.4rem;
+      }
+      .tag-speech  { background: #fef3c7; color: #92400e; }
+      .tag-ambient { background: #ede9fe; color: #4c1d95; }
+    </style>
+  </head>
+  <body>
+
+    <!-- ═══════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════════ -->
+    <div class="container pt-5 mt-5 shadow p-5 mb-5 bg-white rounded">
+      <div class="text-center">
+        <span class="badge bg-primary mb-3" style="font-size:0.85rem; letter-spacing:0.05em;">EMNLP 2026</span>
+        <h1>Noise Adaptive Streaming Audio-Visual Speech Token Enhancement<br>for Robust Full-Duplex Spoken Dialogue Models</h1>
+        <br/>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+          <a href="#" class="btn btn-outline-primary btn-sm">📄 Paper</a>
+          <a href="https://github.com/YOUR_ORG/av-ste" class="btn btn-outline-primary btn-sm">💻 Code</a>
+          <a href="#" class="btn btn-outline-primary btn-sm">🤗 Models</a>
+        </div>
+      </div>
+
+      <br/>
+      <p>Full-duplex spoken dialogue systems enable simultaneous listening and speaking, but their audio-only perception often fails under background noise and overlapping speech, leading to incoherent responses. Visual cues, such as lip movements, provide complementary information under audio corruption, yet existing audio-visual dialogue systems typically require large paired audiovisual datasets and costly end-to-end training. We propose <strong>AV-STE</strong>, a lightweight, streaming audio-visual front-end that recovers clean semantic tokens from noisy speech by fusing audio features with lip-ROI video — and plugs into any semantic tokens or hybrid tokens-based dialogue LM without re-training it.</p>
+      <ul>
+        <li><strong>Streaming AV Encoder</strong> — AV-HuBERT Large with causal convolutions and a bounded-lookahead mask (<em>L</em> = 4 frames, 160 ms), enabling real-time deployment with minimal latency.</li>
+        <li><strong>Noise-Adaptive Fusion</strong> — soft token cross-attention attends to the speech tokenizer's full probability distribution, modulated by an entropy-based gate λ<sub>t</sub> that automatically shifts toward visual information when audio is most corrupted.</li>
+        <li><strong>Plug-and-play</strong> — enhanced semantic tokens replace the noisy stream directly; the speech LLM is kept fully frozen, requiring no additional fine-tuning.</li>
+        <li><strong>+60% GPT coherence</strong> when plugged into Moshi at −10 dB SNR under both speech and ambient noise; WER reduced from 83.8%→62.9% (ambient noise) and 74.9%→58.2% (speech noise).</li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SYSTEM OVERVIEW
+    ═══════════════════════════════════════════════════ -->
+    <div class="container pt-5 mt-5 shadow p-5 mb-5 bg-white rounded">
+      <h3>System Overview</h3>
+      <p>AV-STE consists of two modules. The <strong>Streaming AV Encoder</strong> adapts AV-HuBERT Large with causal convolutions and a bounded-lookahead mask (<em>L</em> = 4, i.e., 160 ms of future audio context) to produce joint audio-visual representations in a streaming-compatible manner. The <strong>Noise-Adaptive Fusion</strong> module then applies soft token cross-attention — attending to the speech tokenizer's full soft distribution — gated by an entropy-based modulation signal λ<sub>t</sub> = σ(<em>w</em>·<em>H</em><sub>norm</sub> + MLP([<em>e<sub>t</sub></em> ‖ <em>h<sub>av,t</sub></em>])). When audio is heavily corrupted (high entropy), the gate steers the model toward visual cues; as audio quality improves the balance shifts back. Enhanced semantic tokens replaced the noisy stream with no changes to the downstream speech LLM and acoustic tokens.</p>
+      <div class="text-center mt-3">
+        <img src="method_avste.jpg" class="img-fluid" style="max-width:860px;" alt="AV-STE system overview" />
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         TABLE A — MIMI DECODE
+    ═══════════════════════════════════════════════════ -->
+    <div class="container pt-5 mt-5 shadow p-5 mb-5 bg-white rounded">
+      <h3>Table A — Semantic Token Recovery &amp; Speech Intelligibility</h3>
+      <ul>
+        <li>Moshi's listening stream uses Mimi's first codebook (cb0) at 12.5 Hz as semantic speech tokens. Under noise, these tokens collapse — recovering them is the core challenge AV-STE solves.</li>
+        <li><strong>Token accuracy</strong>: fraction of AV-STE's predicted cb0 tokens matching the clean reference. <strong>WER</strong>: Whisper-large-v3 transcription error rate on audio decoded from the token stream — a proxy for downstream speech intelligibility.</li>
+      </ul>
+      <p><em>Automatic transcripts</em> (Whisper-large-v3) provided for convenience. Listen to how the decoded audio changes between the noisy baseline and AV-STE.</p>
+
+      <!-- ── Speech noise ── -->
+      <h5 class="mt-4 mb-3"><span class="noise-tag tag-speech">Speech noise</span></h5>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th style="width:22%;">Speaker utterance</th>
+              <th>Clean <small class="text-muted">(upper bound)</small></th>
+              <th>Noisy · Mimi baseline</th>
+              <th class="table-primary">Noisy · AV-STE (ours)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- sp_neg10 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-speech" style="font-size:0.7rem;">−10 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"Both of them bring the imagination to life in ways that remind us that all of our bonds in the end."</span>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg10_mimi_clean.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 100.0%</div>
+                <div class="metric-badge metric-high">WER: 0.0%</div>
+                <div class="transcription">Both of them bring the imagination to life in ways that remind us that all of our bonds in the end.</div>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg10_mimi_noisy.wav"></audio>
+                <div class="metric-badge metric-low">Tok acc: 12.3%</div>
+                <div class="metric-badge metric-low">WER: 133.3%</div>
+                <div class="transcription">Welcome to age of law, work of the brothers in love, we've seen a few of you to boast...</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/sp_neg10_mimi_avste.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 74.0%</div>
+                <div class="metric-badge metric-mid">WER: 28.6%</div>
+                <div class="transcription">Those of them bringing the applications to life in ways that remind us that all of our members of the community.</div>
+              </td>
+            </tr>
+            <!-- sp_neg5 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-speech" style="font-size:0.7rem;">−5 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"And the daughter was exhausted from caring for her mother."</span>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg5_mimi_clean.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 100.0%</div>
+                <div class="metric-badge metric-high">WER: 0.0%</div>
+                <div class="transcription">And the daughter was exhausted from caring for her mother.</div>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg5_mimi_noisy.wav"></audio>
+                <div class="metric-badge metric-low">Tok acc: 0.0%</div>
+                <div class="metric-badge metric-low">WER: 80.0%</div>
+                <div class="transcription">And the sun will be frosted in the dark.</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/sp_neg5_mimi_avste.wav"></audio>
+                <div class="metric-badge metric-mid">Tok acc: 69.2%</div>
+                <div class="metric-badge metric-high">WER: 20.0%</div>
+                <div class="transcription">And the daughter was exhausted from her mother.</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Ambient / music noise ── -->
+      <h5 class="mt-5 mb-3"><span class="noise-tag tag-ambient">Ambient / music noise</span></h5>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th style="width:22%;">Speaker utterance</th>
+              <th>Clean <small class="text-muted">(upper bound)</small></th>
+              <th>Noisy · Mimi baseline</th>
+              <th class="table-primary">Noisy · AV-STE (ours)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ot_neg10 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-ambient" style="font-size:0.7rem;">−10 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"They want to know how often your dog gets outside."</span>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg10_mimi_clean.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 100.0%</div>
+                <div class="metric-badge metric-high">WER: 0.0%</div>
+                <div class="transcription">They want to know how often your dog gets outside.</div>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg10_mimi_noisy.wav"></audio>
+                <div class="metric-badge metric-low">Tok acc: 0.0%</div>
+                <div class="metric-badge metric-low">WER: 1120.0%</div>
+                <div class="transcription">Hey, hey, hey, hey… (Mimi collapses — repeats a single token 112×)</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/ot_neg10_mimi_avste.wav"></audio>
+                <div class="metric-badge metric-mid">Tok acc: 57.9%</div>
+                <div class="metric-badge metric-low">WER: 70.0%</div>
+                <div class="transcription">They want to kill them. That guy.</div>
+              </td>
+            </tr>
+            <!-- ot_neg5 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-ambient" style="font-size:0.7rem;">−5 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"It's shocking to realize that only 28% of American…"</span>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg5_mimi_clean.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 100.0%</div>
+                <div class="metric-badge metric-high">WER: 11.1%</div>
+                <div class="transcription">It's shocking to realize that only 28% of American American.</div>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg5_mimi_noisy.wav"></audio>
+                <div class="metric-badge metric-low">Tok acc: 40.0%</div>
+                <div class="metric-badge metric-low">WER: 88.9%</div>
+                <div class="transcription">It's shocking to realize that only 20% of the time, now it's in my face.</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/ot_neg5_mimi_avste.wav"></audio>
+                <div class="metric-badge metric-high">Tok acc: 80.0%</div>
+                <div class="metric-badge metric-high">WER: 11.1%</div>
+                <div class="transcription">It's shocking to realize that only 28% of American women.</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         TABLE B — MOSHI RESPONSE
+    ═══════════════════════════════════════════════════ -->
+    <div class="container pt-5 mt-5 shadow p-5 mb-5 bg-white rounded">
+      <h3>Table B — Full-Duplex Dialogue Coherence (Moshi)</h3>
+      <ul>
+        <li>The recovered token stream is fed directly into <strong>Moshi</strong> (kyutai/moshiko-pytorch-bf16, kept fully frozen) using the streaming inference protocol: 3 s silence pre-pad, Mimi-encode the full waveform, swap cb0 for AV-STE tokens, run the LM, trim output. No re-training of Moshi is needed.</li>
+        <li>This is the key downstream test: a coherent, on-topic spoken response indicates the LM received a meaningful semantic token stream; incoherent or off-topic responses reveal that the noisy baseline tokens were too corrupted for the LM to interpret. AV-STE restores dialogue coherence at −10 dB SNR, achieving a <strong>+60% improvement in GPT-4 coherence score</strong> under both noise conditions.</li>
+      </ul>
+      <p><em>Automatic transcripts</em> (Whisper-large-v3) provided for convenience. The contrast between Noisy baseline and AV-STE responses is the primary qualitative result of the paper.</p>
+
+      <!-- ── Speech noise ── -->
+      <h5 class="mt-4 mb-3"><span class="noise-tag tag-speech">Speech noise</span></h5>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th style="width:22%;">Speaker utterance</th>
+              <th>Clean <small class="text-muted">(upper bound)</small></th>
+              <th>Noisy · Mimi baseline</th>
+              <th class="table-primary">Noisy · AV-STE (ours)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- sp_neg10 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-speech" style="font-size:0.7rem;">−10 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"I think what that means is that people just couldn't see what was in front of them."</span>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg10_moshi_clean.wav"></audio>
+
+                <div class="transcription">"Yeah, I see that."</div>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg10_moshi_noisy.wav"></audio>
+
+                <div class="transcription">"It's the author's choice. He could have written a separate stanza about the other objects."</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/sp_neg10_moshi_avste.wav"></audio>
+
+                <div class="transcription">"Yeah, it's like being in a room and not being able to see the exit."</div>
+              </td>
+            </tr>
+            <!-- sp_neg5 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-speech" style="font-size:0.7rem;">−5 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"But if they don't stay in Paris, the international pressure will be overwhelming."</span>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg5_moshi_clean.wav"></audio>
+
+                <div class="transcription">"That's true, and France has to be careful not to be seen as the only country that's not helping."</div>
+              </td>
+              <td>
+                <audio controls src="audio/sp_neg5_moshi_noisy.wav"></audio>
+
+                <div class="transcription">"Yeah, I'm familiar with that."</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/sp_neg5_moshi_avste.wav"></audio>
+
+                <div class="transcription">"That's right, the international pressure will be overwhelming."</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Ambient / music noise ── -->
+      <h5 class="mt-5 mb-3"><span class="noise-tag tag-ambient">Ambient / music noise</span></h5>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th style="width:22%;">Speaker utterance</th>
+              <th>Clean <small class="text-muted">(upper bound)</small></th>
+              <th>Noisy · Mimi baseline</th>
+              <th class="table-primary">Noisy · AV-STE (ours)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ot_neg10 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-ambient" style="font-size:0.7rem;">−10 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"We have ideas for how to make things better, and I want to share three of them."</span>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg10_moshi_clean.wav"></audio>
+
+                <div class="transcription">"I'd be happy to hear them."</div>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg10_moshi_noisy.wav"></audio>
+
+                <div class="transcription">"No, I don't have a gum and activity tracker. Why do you ask?"</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/ot_neg10_moshi_avste.wav"></audio>
+
+                <div class="transcription">"I'd love to hear them."</div>
+              </td>
+            </tr>
+            <!-- ot_neg5 -->
+            <tr>
+              <td class="gt-cell">
+                <span class="noise-tag tag-ambient" style="font-size:0.7rem;">−5 dB SNR</span><br/>
+                <span style="font-weight:bold; font-size:0.8rem;">"We can create a decentralized database that has the same efficiency of a monopoly."</span>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg5_moshi_clean.wav"></audio>
+
+                <div class="transcription">"What's a good example of a centralized database?"</div>
+              </td>
+              <td>
+                <audio controls src="audio/ot_neg5_moshi_noisy.wav"></audio>
+
+                <div class="transcription">"Okay, I'm pretty sure I have. No, I don't have it."</div>
+              </td>
+              <td class="ours-cell">
+                <audio controls src="audio/ot_neg5_moshi_avste.wav"></audio>
+
+                <div class="transcription">"What are some examples of monopolies?"</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         CITATION
+    ═══════════════════════════════════════════════════ -->
+    <div class="container pt-5 mt-5 shadow p-5 mb-5 bg-white rounded">
+      <h3>Citation</h3>
+      <pre class="bg-light border rounded p-3" style="font-size:0.82rem;">@inproceedings{avste2026,
+  title     = {Noise Adaptive Streaming Audio-Visual Speech Token Enhancement for Robust Full-Duplex Spoken Dialogue Models},
+  author    = {TODO},
+  booktitle = {Proceedings of EMNLP},
+  year      = {2026},
+}</pre>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,174 @@
+# @package _group_
+#
+# Causal AV-HuBERT: noisy audio + clean video → clean Mimi semantic tokens
+# Backbone: CausalAVHubertModel initialized from pretrained bidirectional weights
+# Noise augmentation: applied to audio at dataset level, video remains clean
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 100
+  tensorboard_logdir: tblog
+  seed: 1337
+  user_dir: ???
+
+checkpoint:
+  save_interval: 1
+  save_interval_updates: 5000
+  keep_interval_updates: 3
+  no_epoch_checkpoints: false
+  best_checkpoint_metric: loss
+  maximize_best_checkpoint_metric: false
+
+distributed_training:
+  ddp_backend: c10d
+  find_unused_parameters: true
+  distributed_world_size: 1
+  distributed_port: 29673
+  nprocs_per_node: 1
+
+task:
+  _name: av_hubert_pretraining
+  data: ???
+  label_dir: ???
+  labels: ["mimi"]
+
+  label_rate: 25
+  fine_tuning: true
+  single_target: false
+  is_s2s: false
+
+  normalize: true
+  stack_order_audio: 4
+  max_sample_size: 500
+
+  # audio + video: video is always clean, audio is noisy (via noise_wav below)
+  modalities: ["audio", "video"]
+
+  image_aug: true
+  pad_audio: true
+  random_crop: false
+
+  # --- noise augmentation ---
+  # noise_wav: path to directory containing train.tsv and valid.tsv
+  #   each tsv lists one noise wav file path per line
+  # noise_prob: probability of adding noise to each audio sample (1.0 = always)
+  # noise_snr: SNR in dB, can be a range e.g. "(-10, 10)"
+  # noise_num: number of noise files to mix
+ 
+
+dataset:
+  num_workers: 6
+  max_tokens: 1000
+  validate_after_updates: 0
+  validate_interval: 1
+  validate_interval_updates: 5000
+  train_subset: train
+  valid_subset: valid
+
+criterion:
+  _name: mimi_mix_loss
+  d_model: 1024       # match your AV-HuBERT hidden dim
+
+  # baseline — CE only (same as original)
+  #use_ctc: false
+  #use_regression: false
+
+  # CE + CTC
+  #use_ctc: true
+  #lambda_ctc: 0.3
+
+  # CE + Regression
+  #use_regression: true
+  #lambda_reg: 0.3
+  #use_mimi_preq: true
+  #mimi_preq_dim: 512        # verify this matches mimi.encoder output dim
+  #clean_audio_key: clean_audio
+  #mimi_vocab: 2048
+
+  # CE + CTC + Regression
+  #use_ctc: true
+  #lambda_ctc: 0.3
+  #use_regression: true
+  #lambda_reg: 0.3
+
+  # CE + Contrastive
+  use_mimi_preq: true
+  mimi_preq_dim: 512
+  use_contrastive: true
+  lambda_con: 0.1
+  con_temperature: 0.07
+  con_proj_dim: 256
+
+optimization:
+  max_epoch: 6
+  max_update: 1000000
+  lr: [0.0001]           # lower LR than clean training — backbone already pretrained
+  sentence_avg: false
+  update_freq: [1]
+  clip_norm: 5.0
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+  weight_decay: 0.0
+
+lr_scheduler:
+  _name: tri_stage
+  warmup_steps: 4000
+  hold_steps: 0
+  decay_steps: 35000
+  final_lr_scale: 0.05
+
+model:
+  _name: av_hubert_mimi_causal
+  w2v_path: /mnt/hard1/bella/EMNLP26/model_weight/large_vox_iter5.pt          # path to pretrained AV-HuBERT checkpoint
+  mimi_vocab_size: 2048
+  head_hidden_dim: 0      # 0 = linear head; set >0 for MLP
+
+  apply_mask: false
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+
+  layerdrop: 0.1
+  dropout: 0.1
+  activation_dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 1.0
+
+  # freeze backbone for first 12k steps (head warms up first, then full fine-tune)
+  freeze_finetune_updates: 0
+
+  # Lookahead frames for the causal transformer attention mask.
+  # 0 = fully causal (80ms total latency, same as Moshi baseline)
+  # 1 = 1 future frame (+40ms → 120ms total)
+  # 2 = 2 future frames (+80ms → 160ms total, recommended sweet spot)
+  # 4 = 4 future frames (+160ms → 240ms total, near-bidirectional quality)
+  lookahead_frames: 4
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+          - task.noise_wav
+          - model.w2v_path
+          - dataset.train_subset
+          - dataset.valid_subset
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

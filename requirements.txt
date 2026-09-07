@@ -1,0 +1,26 @@
+# Core deep learning
+torch>=2.0
+torchaudio>=2.0
+
+# Mimi tokenizer
+moshi
+
+# Hugging Face (for Mimi weights download)
+huggingface_hub
+
+# ASR (demo comparison only)
+openai-whisper
+
+# Audio feature extraction
+python-speech-features
+
+# Video decoding + face-landmark detection (lip-ROI preprocessing, scripts/prepare_lip_roi.py)
+opencv-python
+dlib
+
+# Config / fairseq deps
+omegaconf>=2.1
+hydra-core>=1.1
+
+# fairseq is bundled via av_hubert/fairseq/
+# install it with: pip install -e av_hubert/fairseq/
