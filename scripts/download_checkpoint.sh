@@ -20,9 +20,6 @@
 #     print(path)
 #   "
 #   cp <path> checkpoints/avste.pt
-#
-# Google Drive mirror (backup):
-#   https://drive.google.com/file/d/GDRIVE_FILE_ID/view
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,7 +64,7 @@ if [ -f "$W2V_OUT" ]; then
     echo "[SKIP] large_vox_iter5.pt already exists: $W2V_OUT"
 else
     echo "Downloading large_vox_iter5.pt (AV-HuBERT-Large backbone) …"
-    # Verified reachable (HTTP 200, 3.9GB) as of 2026-08-29.
+    # Verified reachable (HTTP 200, 3.9GB) as of 2026-09-07.
     W2V_URL="https://dl.fbaipublicfiles.com/avhubert/model/lrs3_vox/noise-pretrain/large_vox_iter5.pt"
     if ! curl -fL -o "$W2V_OUT" "$W2V_URL"; then
         rm -f "$W2V_OUT"
